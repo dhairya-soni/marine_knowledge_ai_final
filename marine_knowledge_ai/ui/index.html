@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Marine Knowledge AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    .search-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    input {
+      padding: 10px;
+      width: 500px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+
+    .result, .answer-box {
+      background: white;
+      padding: 16px;
+      margin-top: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      width: 90%;
+      max-width: 900px;
+    }
+
+    mark {
+      background-color: yellow;
+    }
+
+    .source-link {
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    table td, table th {
+      border: 1px solid #ccc;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 <b>Marine Knowledge Search</b></h1>
+
+  <div class="search-container">
+    <input type="text" id="queryInput" placeholder="Enter a keyword or full question..." />
+    <button onclick="runUnifiedSearch()">Search</button>
+  </div>
+
+  <div class="answer-box" id="llmAnswer"></div>
+  <div id="results"></div>
+
+  <script>
+    async function runUnifiedSearch() {
+      const input = document.getElementById("queryInput").value;
+      if (!input) return;
+
+      document.getElementById("results").innerHTML = '';
+      document.getElementById("llmAnswer").innerHTML = '';
+
+      const response = await fetch(`http://127.0.0.1:5000/ask?question=${encodeURIComponent(input)}`);
+      const data = await response.json();
+
+      const answerBox = document.getElementById("llmAnswer");
+      if (data.answer) {
+        answerBox.innerHTML = `<strong>💬 Answer:</strong><br>${formatAnswerMarkdown(data.answer)}`;
+      } else {
+        answerBox.innerHTML = `<p style="color:red">Error: ${data.error || "Unknown error."}</p>`;
+      }
+
+      if (data.sources && Array.isArray(data.sources)) {
+        const resultsBox = document.getElementById("results");
+        data.sources.forEach((result) => {
+          const fileName = result.metadata?.file_name || "unknown.pdf";
+          const pageNum = result.metadata?.page || "N/A";
+          const chunkText = highlightKeywords(result.chunk_text || "", input);
+          const score = result.score?.toFixed(4) || "N/A";
+
+          const div = document.createElement("div");
+          div.className = "result";
+          div.innerHTML = `
+            <strong>📄 File:</strong> ${fileName} &nbsp; | &nbsp; <strong>📄 Page:</strong> ${pageNum}<br/>
+            <strong>⭐ Score:</strong> ${score}<br/>
+            <strong>📌 Snippet:</strong> ${chunkText}<br/>
+            <a class="source-link" href="../data/raw_documents/${fileName}" target="_blank">🔗 Preview PDF</a>
+          `;
+          resultsBox.appendChild(div);
+        });
+      }
+    }
+
+    function highlightKeywords(text, query) {
+      const q = query.split(/\s+/).filter(Boolean).join('|');
+      return text.replace(new RegExp(`(${q})`, 'gi'), "<mark>$1</mark>");
+    }
+
+    function convertMarkdownTablesToHTML(text) {
+      return text.replace(/((?:\|.*?\|(?:\s*\n)?)+)/g, (match) => {
+        const rows = match.trim().split('\n').filter(row => row.includes('|'));
+        if (rows.length < 2) return match;
+        let html = '<table>';
+        rows.forEach(row => {
+          const cells = row.split('|').slice(1, -1).map(cell =>
+            `<td><strong>${cell.trim()}</strong></td>`
+          );
+          html += `<tr>${cells.join('')}</tr>`;
+        });
+        html += '</table>';
+        return html;
+      });
+    }
+
+    function formatAnswerMarkdown(text) {
+      let formatted = text
+        .replace(/\*\*(.+?)\*\*:/g, '<strong>$1:</strong>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\* /gm, '• ')
+        .replace(/\n/g, '<br>')
+        .replace(/\*/g, '');
+      formatted = convertMarkdownTablesToHTML(formatted);
+      return formatted;
+    }
+  </script>
+</body>
+</html>
