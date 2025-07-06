@@ -41,7 +41,7 @@ Follow these formatting rules:
 1. Use <strong>Field:</strong> value for technical specifications and bullet-style details.
 2. If the answer includes tabular data (e.g., multiple models or values), format it using proper HTML <table> tags.
 3. Always insert <br> after every field/value pair for readability.
-4. If possible, cite the <em>document name</em> and <em>page number</em> (if provided in metadata) for each fact or group of facts.
+4. If possible, cite the <em>document name</em> and <em>page number</em> (if provided in metadata) for each fact or group of facts from the given documents.
 5. Prefer long, detailed answers over short summaries. Be factual, avoid hallucinations.
 6. Be robust: handle both specific and open-ended questions gracefully.
 
